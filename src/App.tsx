@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from './lib/supabase'
+import { supabase, supabaseConfigError } from './lib/supabase'
 import type { Person, Transaction, PersonWithStats, View } from './types'
 import Dashboard from './components/Dashboard'
 import PersonDetail from './components/PersonDetail'
@@ -41,6 +41,12 @@ export default function App() {
 
   // ── data fetching ─────────────────────────────────────────
   const load = useCallback(async () => {
+    if (!supabase) {
+      setError(supabaseConfigError ?? 'Configuration Supabase manquante')
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
@@ -63,11 +69,14 @@ export default function App() {
 
   // ── real-time subscription ────────────────────────────────
   useEffect(() => {
-    const sub = supabase
+    const client = supabase
+    if (!client) return
+
+    const sub = client
       .channel('transactions-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => { load() })
       .subscribe()
-    return () => { supabase.removeChannel(sub) }
+    return () => { client.removeChannel(sub) }
   }, [load])
 
   // ── toast helper ──────────────────────────────────────────
@@ -81,6 +90,7 @@ export default function App() {
   const addTransaction = async (data: {
     person_id: string; type: 'emprunt' | 'remboursement'; amount: number; motif: string; date: string | null
   }) => {
+    if (!supabase) { setError(supabaseConfigError ?? 'Configuration Supabase manquante'); return false }
     const { error: e } = await supabase.from('transactions').insert(data)
     if (e) { showToast('Erreur : ' + e.message); return false }
     await load()
@@ -89,6 +99,7 @@ export default function App() {
   }
 
   const deleteTransaction = async (id: string) => {
+    if (!supabase) { setError(supabaseConfigError ?? 'Configuration Supabase manquante'); return }
     const { error: e } = await supabase.from('transactions').delete().eq('id', id)
     if (e) { showToast('Erreur : ' + e.message); return }
     await load()
@@ -96,6 +107,7 @@ export default function App() {
   }
 
   const addPerson = async (name: string, color_bg: string, color_text: string, initials: string) => {
+    if (!supabase) { setError(supabaseConfigError ?? 'Configuration Supabase manquante'); return false }
     const { error: e } = await supabase.from('persons').insert({ name, color_bg, color_text, initials })
     if (e) { showToast('Erreur : ' + e.message); return false }
     await load()
