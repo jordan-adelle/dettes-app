@@ -38,6 +38,24 @@ header {
 .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; }
 .logo span { color: var(--accent); }
 .header-date { font-size: 11px; color: var(--text2); }
+.install-btn {
+  border: 1px solid rgba(108,99,255,.35);
+  background: rgba(108,99,255,.14);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s, border-color .2s;
+}
+.install-btn:active { transform: scale(.98); }
+.install-btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  border-color: var(--border);
+}
 
 /* ── NAV ────────────────────────────────── */
 nav {

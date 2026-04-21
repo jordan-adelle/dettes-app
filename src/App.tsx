@@ -5,6 +5,13 @@ import Dashboard from './components/Dashboard'
 import PersonDetail from './components/PersonDetail'
 import AddForm from './components/AddForm'
 
+const VIEW_STORAGE_KEY = 'mes-dettes:view'
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
+}
+
 // ── icons ──────────────────────────────────────────────────
 const GridIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -35,8 +42,17 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState<string | null>(null)
-  const [view, setView]                 = useState<View>({ name: 'dashboard' })
+  const [view, setView]                 = useState<View>(() => {
+    try {
+      const raw = window.localStorage.getItem(VIEW_STORAGE_KEY)
+      return raw ? JSON.parse(raw) as View : { name: 'dashboard' }
+    } catch {
+      return { name: 'dashboard' }
+    }
+  })
   const [toast, setToast]               = useState({ msg: '', show: false })
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [isInstalled, setIsInstalled]   = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>()
 
   // ── data fetching ─────────────────────────────────────────
@@ -67,6 +83,10 @@ export default function App() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    window.localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(view))
+  }, [view])
+
   // ── real-time subscription ────────────────────────────────
   useEffect(() => {
     const client = supabase
@@ -85,6 +105,35 @@ export default function App() {
     setToast({ msg, show: true })
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 2500)
   }, [])
+
+  useEffect(() => {
+    const media = window.matchMedia('(display-mode: standalone)')
+    const updateInstalled = () => {
+      setIsInstalled(media.matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true)
+    }
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault()
+      setInstallPrompt(event as BeforeInstallPromptEvent)
+    }
+
+    const handleAppInstalled = () => {
+      setInstallPrompt(null)
+      setIsInstalled(true)
+      showToast('Application installée ✓')
+    }
+
+    updateInstalled()
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    window.addEventListener('appinstalled', handleAppInstalled)
+    media.addEventListener?.('change', updateInstalled)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
+      media.removeEventListener?.('change', updateInstalled)
+    }
+  }, [showToast])
 
   // ── actions ───────────────────────────────────────────────
   const addTransaction = async (data: {
@@ -115,6 +164,19 @@ export default function App() {
     return true
   }
 
+  const installApp = async () => {
+    if (!installPrompt) {
+      showToast('Installation non disponible sur ce navigateur pour le moment')
+      return
+    }
+
+    await installPrompt.prompt()
+    const choice = await installPrompt.userChoice
+    if (choice.outcome === 'accepted') {
+      setInstallPrompt(null)
+    }
+  }
+
   // ── nav ───────────────────────────────────────────────────
   const goTo = (v: View) => { setView(v); window.scrollTo(0, 0) }
   const currentNav = view.name === 'detail' ? 'dashboard' : view.name
@@ -132,6 +194,11 @@ export default function App() {
             {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
         </div>
+        {!isInstalled && (
+          <button className="install-btn" onClick={installApp} disabled={!installPrompt}>
+            {installPrompt ? 'Installer' : 'PWA bientôt'}
+          </button>
+        )}
       </header>
 
       {/* CONTENT */}
@@ -161,7 +228,6 @@ export default function App() {
                 defaultPersonId={view.personId}
                 onSubmit={addTransaction}
                 onAddPerson={addPerson}
-                onBack={() => goTo({ name: 'dashboard' })}
               />
             )}
           </>

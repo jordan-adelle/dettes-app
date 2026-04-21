@@ -12,7 +12,6 @@ interface Props {
     date: string | null
   }) => Promise<boolean>
   onAddPerson: (name: string, color_bg: string, color_text: string, initials: string) => Promise<boolean>
-  onBack: () => void
 }
 
 const PRESET_COLORS = [
@@ -24,7 +23,7 @@ const PRESET_COLORS = [
   { bg: '#2a1f3a', text: '#d09bff' },
 ]
 
-export default function AddForm({ persons, defaultPersonId, onSubmit, onAddPerson, onBack }: Props) {
+export default function AddForm({ persons, defaultPersonId, onSubmit, onAddPerson }: Props) {
   const [personId, setPersonId]   = useState(defaultPersonId ?? persons[0]?.id ?? '')
   const [type, setType]           = useState<'emprunt' | 'remboursement'>('emprunt')
   const [amount, setAmount]       = useState('')
@@ -46,7 +45,8 @@ export default function AddForm({ persons, defaultPersonId, onSubmit, onAddPerso
     const ok = await onSubmit({ person_id: personId, type, amount: n, motif: motif.trim(), date: date || null })
     setLoading(false)
     if (ok) {
-      setAmount(''); setMotif(''); onBack()
+      setAmount('')
+      setMotif('')
     }
   }
 
@@ -57,7 +57,10 @@ export default function AddForm({ persons, defaultPersonId, onSubmit, onAddPerso
     const initials = newName.trim().slice(0, 2).toUpperCase()
     const ok = await onAddPerson(newName.trim(), col.bg, col.text, initials)
     setAddingPerson(false)
-    if (ok) { setNewName(''); setShowNewPerson(false) }
+    if (ok) {
+      setNewName('')
+      setShowNewPerson(false)
+    }
   }
 
   return (
