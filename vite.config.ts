@@ -3,6 +3,13 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
+  define: {
+    __APP_SUPABASE_URL__: JSON.stringify(process.env.SUPABASE_URL ?? ''),
+    __APP_SUPABASE_KEY__: JSON.stringify(
+      process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_PUBLISHABLE_KEY ?? ''
+    ),
+  },
   plugins: [
     react(),
     VitePWA({
